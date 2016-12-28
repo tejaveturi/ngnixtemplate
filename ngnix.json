@@ -1,0 +1,88 @@
+{
+ "AWSTemplateFormationVersion":"2010-09-09",
+ "Description":"creating ngnix server",
+ "Mappings": {
+   "RegionMap":{
+     "us-east-1":{"AmazonLinux": "ami-9be6f38c"},
+     "us-west-1":{"AmazonLinux": "ami-b73d6cd7"}
+   }
+ },
+ "Parameters":{
+   "VPC":{
+     "Description":"default vpc",
+     "Type":"AWS::EC2::vpc::Id",
+     "Default":"vpc-a48fc0c1"
+
+   },
+   "Subnet":{
+     "Description":"default subnet",
+     "Type":"AWS::EC2::Subnet::Id",
+     "Default":"subnet-da5b61bf",
+     "VpcId":{"Ref":"VPC"}
+   },
+   "KeyPair":{
+     "Description":" key pair to connect",
+     "Type":"AWS::EC2::KeyPair::KeyName"
+   },
+   "InstanceType":{
+     "Description":"Instance type to run",
+     "Type":"String",
+     "AllowedValues":["t1*" , "t2*"],
+     "Default":"t2.micro"
+   }
+ },
+ "Resource":{
+   "Ec2Instance":{
+     "Type":"AWS::EC2::Instance",
+     "Properties":{
+       "ImageId":{"Fn::FindInMap":["RegionMap", {"Ref":"AWS::Region"}, "AmazonLinux"]},
+       "KeyName":{"Ref":"KeyPair"},
+       "InstanceType":{"Ref":"InstanceType"},
+       "NetworkInterfaces":[{
+         "GroupId":{"Ref":"SecurityGroup"},
+         "SubnetId":{"Ref":"Subnet"}
+        }]
+      },
+       "UserData":{"Fn::Base64":{"Fn::Join":["\n",[
+         "#!/bin/bash ",
+         "yum install ngnix -y ",
+         "cd /var/swww/html",
+         "echo'<html><body><h1>Hello World!</h1></body></html>' > index.html",
+         "service ngnix start",
+         "sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/ssl/private/nginx-selfsigned.key -out /etc/ssl/certs/nginx-selfsigned.crt"
+        ]]}}
+    },
+   "ElasticIp":{
+     "Type":"AWS::EC2::EIP",
+     "Properties":{
+        "InstanceId":{"Ref":"Ec2Instance"},
+        "Domain":"vpc"
+      }
+    },
+   "SecurityGroup":{
+      "Type":"AWS::EC2::SecurityGroup",
+      "Properties":{
+        "GroupDescription":"ssh ngnix",
+        "VpcId":{"Ref":"VPC"},
+        "SecurityGroupIngress":[{
+          "CidrIp":"0.0.0.0/0",
+          "FromPort":22,
+          "IpProtocol": "tcp",
+          "ToPort":22
+          }]
+      }
+    }
+  },
+
+
+ "Output":{
+   "HostPublicIp":{
+     "Description":"Ip address",
+     "Value":{"Ref":"ElasticIp"}
+    },
+   "FQDN":{
+     "Description":"Host's Name",
+     "Value":{"Fn::GetAtt":["EC2" , "HOSTNAME"]}
+    }
+  }
+}
