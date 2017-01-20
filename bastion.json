@@ -1,0 +1,71 @@
+{
+"AWSTemplateFormationVersion":"2010-09-09",
+"Description":"ssh bastion host",
+"Mapping":{
+  ""
+},
+"Parameters":{
+    "Vpc":{
+      "Description":"using default vpc",
+      "Type":"AWS::EC2::vpc::Id",
+    },
+    "Subnet":{
+      "Description":"subnet where the machine is used",
+      "Type":"AWS::EC2::Subnet::Id",
+    },
+    "KeyPair":{
+      "Description":"Key pair is used to connect",
+      "Type":"AWS::EC2:KeyPair::KeyName"
+    },
+    "InstanceType":{
+       "Description":"Instance type mentioned",
+       "Type":"String",
+       "AllowedValues":["t2*"],
+     },
+   },
+"Resource":{
+    "Ec2Instance":{
+      "Type":"AWS::EC2::Instance",
+      "Properties":{
+        "ImageId":"",
+        "KeyName":{"Ref":"KeyPair"},
+        "InstanceType":{"Ref":"InstanceType"},
+        "NetworkInterfaces":[{
+          "GroupId":{"Ref":"SecurityGroup"}
+          }]
+      },
+    "ElasticIp":{
+      "Type":"AWS::EC2::EIP",
+      "Properties":{
+        "InstanceId":{"Ref":"Ec2Instance"},
+        "Domain":"vpc"
+      },
+    },
+    "SecurityGroup":{
+
+      "Type":"AWS::EC2::SecurityGroup",
+      "Properties":{
+        "GroupDescription":"ssh-bastion-host",
+        "VpcId":{"Ref":"vpc"},
+        "SecurityGroupIngress":[{
+          "CidrIp":"0.0.0.0/0",
+          "FromPort": 22,
+          "IpProtocol":"tcp",
+          "ToPort":22
+          }],
+      },
+    },
+
+  },
+},
+"Output":{
+  "HostPublicIp":{
+    "Description":"Host's Ip address",
+    "value":{"Ref":"ElasticIp"},
+  },
+  "FQDN":{
+    "Description":"Host's Name",
+    "value":{"Fn::GetAtt":"EC2","HOSTNAME"},
+  },
+},
+}
